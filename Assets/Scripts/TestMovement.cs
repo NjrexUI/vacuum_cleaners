@@ -13,7 +13,6 @@ public class PlayerMoveTest : MonoBehaviour
 
     void Update()
     {
-        // Get input (WASD or Arrow keys)
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
         moveInput.Normalize();
