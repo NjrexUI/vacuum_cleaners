@@ -8,7 +8,7 @@ public class DoorTrigger : MonoBehaviour
     public RoomController targetRoom;
 
     [Tooltip("How far the player appears inside the next room.")]
-    public float enterOffset = 0.7f;
+    public float enterOffset = 0f;
 
     private bool isTransitioning = false;
     private Collider2D doorCollider;
@@ -22,7 +22,6 @@ public class DoorTrigger : MonoBehaviour
     {
         if (!enabled || isTransitioning || targetRoom == null) return;
         if (!other.CompareTag("Player")) return;
-
         if (RoomManager.Instance.IsCameraMoving) return;
         if (RoomManager.Instance.CurrentRoom == targetRoom) return;
 
@@ -53,7 +52,7 @@ public class DoorTrigger : MonoBehaviour
             ? lastVelocity.normalized
             : (doorPos - playerStart).normalized;
 
-        Vector3 spawnPos = doorPos + direction * enterOffset;
+        Vector3 spawnPos = doorPos;
 
         int safety = 0;
         while (Physics2D.OverlapCircle(spawnPos, 0.15f, LayerMask.GetMask("Walls", "Doors")) && safety < 5)

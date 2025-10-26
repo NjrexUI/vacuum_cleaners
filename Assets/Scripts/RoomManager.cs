@@ -46,24 +46,44 @@ public class RoomManager : MonoBehaviour
         previousRoom = CurrentRoom;
         CurrentRoom = rc;
 
-        // Disable triggers of the room player entered
-        rc.SetDoorTriggersActive(false);
+        // 1) Disable triggers of the room player is now in (so they don't fire while player is inside)
+        if (CurrentRoom != null)
+            CurrentRoom.SetDoorTriggersActive(false);
 
-        // Re-enable the previous room’s triggers (so you can go back)
-        if (previousRoom != null)
-            previousRoom.SetDoorTriggersActive(true);
+        // 2) Enable triggers on adjacent rooms (so colliding with neighbor room's door triggers entry into that room)
+        EnableNeighborRoomTriggers(CurrentRoom);
+
+        // Optionally disable previousRoom triggers were already disabled by above, but safe to call:
+        if (previousRoom != null && previousRoom != CurrentRoom)
+        {
+            previousRoom.SetDoorTriggersActive(false);
+        }
     }
 
     public void EnableNeighborRoomTriggers(RoomController room)
     {
         if (room == null) return;
 
-        // Disable everything first
-        foreach (var r in createdRooms)
-            r.SetDoorTriggersActive(false);
+        Vector2Int pos = room.gridPosition;
 
-        // Enable only the current room's door triggers
-        room.SetDoorTriggersActive(true);
+        // for each neighbor, enable *that neighbor's* door triggers (these lead into neighbor)
+        var dirUp = pos + Vector2Int.up;
+        var dirDown = pos + Vector2Int.down;
+        var dirLeft = pos + Vector2Int.left;
+        var dirRight = pos + Vector2Int.right;
+
+        // Helper: enable triggers on a neighbor if it exists
+        void EnableIfExists(Vector2Int p)
+        {
+            var neighbor = createdRooms.FirstOrDefault(r => r.gridPosition == p);
+            if (neighbor != null)
+                neighbor.SetDoorTriggersActive(true);
+        }
+
+        EnableIfExists(dirUp);
+        EnableIfExists(dirDown);
+        EnableIfExists(dirLeft);
+        EnableIfExists(dirRight);
     }
 
     public IEnumerator MoveCameraToRoom(RoomController targetRoom)
