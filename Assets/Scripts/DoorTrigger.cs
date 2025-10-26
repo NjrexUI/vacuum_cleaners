@@ -1,72 +1,35 @@
-﻿using UnityEngine;
-using System.Collections;
+using UnityEngine;
 
-[RequireComponent(typeof(Collider2D))]
 public class DoorTrigger : MonoBehaviour
 {
-    [Tooltip("The room this door leads to.")]
     public RoomController targetRoom;
-
-    [Tooltip("How far the player appears inside the next room.")]
-    public float enterOffset = 0f;
+    public Transform targetSpawnPoint;
 
     private bool isTransitioning = false;
-    private Collider2D doorCollider;
-
-    private void Awake()
-    {
-        doorCollider = GetComponent<Collider2D>();
-    }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!enabled || isTransitioning || targetRoom == null) return;
+        if (isTransitioning) return;
         if (!other.CompareTag("Player")) return;
-        if (RoomManager.Instance.IsCameraMoving) return;
-        if (RoomManager.Instance.CurrentRoom == targetRoom) return;
+        if (targetRoom == null) return;
 
-        StartCoroutine(TransitionToRoom(other.transform));
+        StartCoroutine(Transition(other.gameObject));
     }
 
-    private IEnumerator TransitionToRoom(Transform player)
+    private System.Collections.IEnumerator Transition(GameObject player)
     {
-        Vector3 doorPos = transform.position;
-        Vector3 playerStart = player.position;
+        isTransitioning = true;
 
-        Rigidbody2D rb = player.GetComponent<Rigidbody2D>();
-        PlayerMovement move = player.GetComponent<PlayerMovement>();
+        // Optional: fade or disable player input
+        player.GetComponent<Rigidbody2D>().linearVelocity = Vector2.zero;
 
-        Vector3 lastVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
+        // Move player instantly to target room's spawn point
+        player.transform.position = targetSpawnPoint.position;
 
-        if (move != null)
-        {
-            move.StopInstantly();
-            move.enabled = false;
-        }
-        if (rb != null) rb.linearVelocity = Vector2.zero;
+        // Move camera to target room
+        CameraController.Instance.MoveToRoom(targetRoom.transform.position);
 
-        yield return RoomManager.Instance.MoveCameraToRoom(targetRoom);
-        yield return null;
-
-        Vector3 direction = lastVelocity.sqrMagnitude > 0.001f
-            ? lastVelocity.normalized
-            : (doorPos - playerStart).normalized;
-
-        Vector3 spawnPos = doorPos;
-
-        int safety = 0;
-        while (Physics2D.OverlapCircle(spawnPos, 0.15f, LayerMask.GetMask("Walls", "Doors")) && safety < 5)
-        {
-            spawnPos += direction * 0.3f;
-            safety++;
-        }
-
-        player.position = new Vector3(spawnPos.x, spawnPos.y, player.position.z);
-
-        yield return new WaitForSeconds(0.15f);
-        if (move != null) move.enabled = true;
-
+        yield return new WaitForSeconds(0.4f); // small delay
         isTransitioning = false;
-
     }
 }

@@ -1,12 +1,9 @@
 using UnityEngine;
-using System.Collections.Generic;
 public class RoomController : MonoBehaviour
 {
     public Vector2Int gridPosition;        // set by generator (x,y in grid)
     public RoomType roomType = RoomType.Regular;
     public int graphDistance = 0;          // distance from spawn (filled by generator)
-
-    private List<DoorTrigger> cachedDoorTriggers = new List<DoorTrigger>();
 
     // Door placeholder transforms (assign to children or via code by name)
     public Transform doorPlaceUp;
@@ -18,11 +15,6 @@ public class RoomController : MonoBehaviour
     // If you put Door child GameObjects under placeholders, we just toggle them by name.
     const string doorName = "Door";
     const string wallName = "Wall";
-
-    private void Start()
-    {
-        CacheDoorTriggers();
-    }
 
     private void Awake()
     {
@@ -57,37 +49,7 @@ public class RoomController : MonoBehaviour
             child.gameObject.SetActive(active);
     }
 
-    public void CacheDoorTriggers()
-    {
-        cachedDoorTriggers.Clear();
-
-        TryAddTriggerFromPlace(doorPlaceUp);
-        TryAddTriggerFromPlace(doorPlaceDown);
-        TryAddTriggerFromPlace(doorPlaceLeft);
-        TryAddTriggerFromPlace(doorPlaceRight);
-    }
-
-    private void TryAddTriggerFromPlace(Transform place)
-    {
-        if (place == null) return;
-        var door = place.Find("Door");
-        if (door == null) return;
-        var dt = door.GetComponent<DoorTrigger>();
-        if (dt != null && !cachedDoorTriggers.Contains(dt))
-            cachedDoorTriggers.Add(dt);
-    }
-
-    // Enable/disable *this room's* door triggers
-    public void SetDoorTriggersActive(bool active)
-    {
-        for (int i = 0; i < cachedDoorTriggers.Count; i++)
-        {
-            var dt = cachedDoorTriggers[i];
-            if (dt != null)
-                dt.enabled = active;
-        }
-    }
-
+    // Room enter/exit detection — requires the prefab root Collider2D set to isTrigger.
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
@@ -95,4 +57,9 @@ public class RoomController : MonoBehaviour
             RoomManager.Instance.NotifyPlayerEnteredRoom(this);
         }
     }
+    public Transform GetDoorByName(string name)
+    {
+        return transform.Find($"Doors/{name}Door");
+    }
+
 }
