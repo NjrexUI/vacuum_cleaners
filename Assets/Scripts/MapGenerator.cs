@@ -212,37 +212,72 @@ public class MapGenerator : MonoBehaviour
             rc.SetDoorState(up, down, left, right);
         }
 
-        foreach (var kv in roomLookup)
+        // ----------------------
+        // Link DoorTrigger.targetRoom + spawn offsets
+        // ----------------------
+        foreach (var kv in roomLookup.ToList())
         {
-            var pos = kv.Key;
-            var rc = kv.Value;
+            Vector2Int pos = kv.Key;
+            RoomController rc = kv.Value;
 
-            LinkDoors(rc, pos + Vector2Int.up, "Up", "Down");
-            LinkDoors(rc, pos + Vector2Int.down, "Down", "Up");
-            LinkDoors(rc, pos + Vector2Int.left, "Left", "Right");
-            LinkDoors(rc, pos + Vector2Int.right, "Right", "Left");
-        }
-
-        // Local helper function (can be private inside MapGenerator)
-        void LinkDoors(RoomController room, Vector2Int neighborPos, string fromDir, string toDir)
-        {
-            if (!roomLookup.ContainsKey(neighborPos)) return;
-
-            var neighbor = roomLookup[neighborPos];
-
-            var fromDoor = room.GetDoorByName(fromDir);
-            var toDoor = neighbor.GetDoorByName(toDir);
-
-            if (fromDoor != null && toDoor != null)
+            // UP
+            if (roomLookup.ContainsKey(pos + Vector2Int.up) && rc.doorPlaceUp != null)
             {
-                var trigger = fromDoor.GetComponent<DoorTrigger>();
-                if (trigger != null)
+                var doorChild = rc.doorPlaceUp.Find("Door");
+                if (doorChild != null)
                 {
-                    trigger.targetRoom = neighbor;
-                    trigger.targetSpawnPoint = toDoor.transform.Find("SpawnPoint");
+                    var dt = doorChild.GetComponent<DoorTrigger>();
+                    if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
+
+                    dt.targetRoom = roomLookup[pos + Vector2Int.up];
+                    // when going up, player should appear slightly below center of target room
+                    dt.playerSpawnOffset = Vector2.down * (roomSpacingY * 0.25f);
+                }
+            }
+
+            // DOWN
+            if (roomLookup.ContainsKey(pos + Vector2Int.down) && rc.doorPlaceDown != null)
+            {
+                var doorChild = rc.doorPlaceDown.Find("Door");
+                if (doorChild != null)
+                {
+                    var dt = doorChild.GetComponent<DoorTrigger>();
+                    if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
+
+                    dt.targetRoom = roomLookup[pos + Vector2Int.down];
+                    dt.playerSpawnOffset = Vector2.up * (roomSpacingY * 0.25f);
+                }
+            }
+
+            // LEFT
+            if (roomLookup.ContainsKey(pos + Vector2Int.left) && rc.doorPlaceLeft != null)
+            {
+                var doorChild = rc.doorPlaceLeft.Find("Door");
+                if (doorChild != null)
+                {
+                    var dt = doorChild.GetComponent<DoorTrigger>();
+                    if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
+
+                    dt.targetRoom = roomLookup[pos + Vector2Int.left];
+                    dt.playerSpawnOffset = Vector2.right * (roomSpacingX * 0.25f);
+                }
+            }
+
+            // RIGHT
+            if (roomLookup.ContainsKey(pos + Vector2Int.right) && rc.doorPlaceRight != null)
+            {
+                var doorChild = rc.doorPlaceRight.Find("Door");
+                if (doorChild != null)
+                {
+                    var dt = doorChild.GetComponent<DoorTrigger>();
+                    if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
+
+                    dt.targetRoom = roomLookup[pos + Vector2Int.right];
+                    dt.playerSpawnOffset = Vector2.left * (roomSpacingX * 0.25f);
                 }
             }
         }
+
 
         // Register rooms in RoomManager so camera and map UI can use them
         RoomManager.Instance.RegisterGeneratedRooms(roomLookup.Values.ToList());

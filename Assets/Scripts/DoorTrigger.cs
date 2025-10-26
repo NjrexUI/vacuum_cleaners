@@ -1,35 +1,31 @@
 using UnityEngine;
+using System.Collections;
 
+[RequireComponent(typeof(Collider2D))]
 public class DoorTrigger : MonoBehaviour
 {
-    public RoomController targetRoom;
-    public Transform targetSpawnPoint;
-
-    private bool isTransitioning = false;
+    public RoomController targetRoom;          // Set by RoomController when doors are spawned
+    public Vector2 playerSpawnOffset;          // Direction where player should appear in target room
+    private bool isTransitioning;
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (isTransitioning) return;
+        if (isTransitioning || targetRoom == null) return;
         if (!other.CompareTag("Player")) return;
-        if (targetRoom == null) return;
 
-        StartCoroutine(Transition(other.gameObject));
+        StartCoroutine(TransitionToRoom(other.transform));
     }
 
-    private System.Collections.IEnumerator Transition(GameObject player)
+    private IEnumerator TransitionToRoom(Transform player)
     {
         isTransitioning = true;
 
-        // Optional: fade or disable player input
-        player.GetComponent<Rigidbody2D>().linearVelocity = Vector2.zero;
+        // Tell RoomManager to move camera
+        yield return RoomManager.Instance.MoveCameraToRoom(targetRoom);
 
-        // Move player instantly to target room's spawn point
-        player.transform.position = targetSpawnPoint.position;
+        // Move player slightly inside target room
+        player.position = targetRoom.transform.position + (Vector3)playerSpawnOffset;
 
-        // Move camera to target room
-        CameraController.Instance.MoveToRoom(targetRoom.transform.position);
-
-        yield return new WaitForSeconds(0.4f); // small delay
         isTransitioning = false;
     }
 }
