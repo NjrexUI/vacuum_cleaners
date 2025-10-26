@@ -1,365 +1,308 @@
-﻿using JetBrains.Annotations;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.Experimental.AI;
-
+using System.Linq;
 public class MapGenerator : MonoBehaviour
 {
-    private int[] floorPlan;
-    public int[] getFloorPlan => floorPlan;
+    [Header("Player Spawn")]
+    public GameObject playerPrefab;   // assign in Inspector
+    private GameObject playerInstance;
 
-    private int floorPlanCount;
-    private int minRooms;
-    private int maxRooms;
-    private List<int> endRooms;
+    [Header("Grid")]
+    public int gridWidth = 11;       // odd helps center
+    public int gridHeight = 9;
+    public int startX = 5;          // spawn cell coordinates (grid)
+    public int startY = 4;
 
-    private int bossRoomIndex;
-    private int secretRoomIndex;
-    private int shopRoomIndex;
+    [Header("Room counts")]
+    public int minRooms = 8;
+    public int maxRooms = 14;
 
-    public Cell cellPrefab;
-    private float cellSize;
-    private Queue<int> cellQueue;
-    private List<Cell> spawnedCells;
+    [Header("Prefabs")]
+    public GameObject roomPrefabRegular; // default room prefab (Tilemap)
+    public GameObject roomPrefabBoss;
+    public GameObject roomPrefabShop;
+    public GameObject roomPrefabSecret;
 
-    public List<Cell> getSpawnedCells => spawnedCells;
+    [Header("Spacing")]
+    public float roomSpacingX = 16f; // world units between room centers (match tilemap size)
+    public float roomSpacingY = 9f;
 
-    private List<int> bigRoomIndexes;
-
-    [Header("Sprite References")]
-    [SerializeField] private Sprite shop;
-    [SerializeField] private Sprite boss;
-    [SerializeField] private Sprite secret;
-
-    public static MapGenerator instance;
-
-    private static readonly List<int[]> roomShapes = new()
+    // Internal
+    private bool[,] occupied; // grid occupancy
+    private List<Vector2Int> cells; // list of occupied coords
+    private Dictionary<Vector2Int, RoomController> roomLookup = new();
+    
+    private void Start()
     {
-        new int[] { -1 },
-        new int[] { 1 },
-
-        new int[] { 10 },
-        new int[] { -10 },
-
-        new int[] { 1, 10 },
-        new int[] { 1, 11 },
-        new int[] { 10, 11 },
-
-        new int[] { 9, 10 },
-        new int[] { -1, 9 },
-        new int[] { -1, 10 },
-
-        new int[] { 1, -10 },
-        new int[] { 1, -9 },
-        new int[] { -9, -10 },
-
-        new int[] { -1, -10 },
-        new int[] { -1, -11 },
-        new int[] { -10, -11 },
-
-        new int[] { 1, 10, 11 },
-        new int[] { 1, -9, -10 },
-        new int[] { -1, 9, 10 },
-        new int[] { -1, -10, -11 }
-    };
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        instance = this;
-
-        minRooms = 7;
-        maxRooms = 15;
-        cellSize = 0.5f;
-        spawnedCells = new();
-
-        SetupDungeon();
+        Generate();
     }
 
-    // Update is called once per frame
-    void Update()
+    public void Generate()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        occupied = new bool[gridWidth, gridHeight];
+        cells = new List<Vector2Int>();
+        roomLookup.Clear();
+
+        // BFS expansion from start until desired rooms count
+        Queue<Vector2Int> q = new Queue<Vector2Int>();
+        Vector2Int start = new Vector2Int(startX, startY);
+        q.Enqueue(start);
+        occupied[start.x, start.y] = true;
+        cells.Add(start);
+
+        System.Random rnd = new System.Random();
+
+        while (q.Count > 0 && cells.Count < maxRooms)
         {
-            SetupDungeon();
-        }
-    }
+            var curr = q.Dequeue();
 
-    void SetupDungeon()
-    {
-        for (int i = 0; i < spawnedCells.Count; i++)
-        {
-            Destroy(spawnedCells[i].gameObject);
-        }
+            // shuffle neighbor directions
+            var dirs = new List<Vector2Int> {
+                new Vector2Int(1,0),
+                new Vector2Int(-1,0),
+                new Vector2Int(0,1),
+                new Vector2Int(0,-1)
+            }.OrderBy(_ => rnd.Next()).ToList();
 
-        spawnedCells.Clear();
-
-        floorPlan = new int[100];
-        floorPlanCount = default;
-        cellQueue = new Queue<int>();
-        endRooms = new List<int>();
-        bigRoomIndexes = new List<int>();
-
-        VisitCell(45);
-
-        GenerateDungeon();
-    }
-
-    void GenerateDungeon()
-    {
-        while (cellQueue.Count > 0)
-        {
-            int index = cellQueue.Dequeue();
-            int x = index % 10;
-            int y = index / 10;
-
-            bool created = false;
-            if (x > 1) created |= VisitCell(index - 1);
-            if (x < 9) created |= VisitCell(index + 1);
-            if (index > 20) created |= VisitCell(index - 10);
-            if (index < 70) created |= VisitCell(index + 10);
-
-            if (created == false)
-                endRooms.Add(index);
-        }
-
-        if (floorPlanCount < minRooms)
-        {
-            SetupDungeon();
-            return;
-        }
-
-        CleanEndRoomsList();
-
-        SetupSpecialRooms();
-    }
-
-    void CleanEndRoomsList()
-    {
-        endRooms.RemoveAll(item => bigRoomIndexes.Contains(item) || GetNeighbourCount(item) > 1);
-    }
-
-    void SetupSpecialRooms()
-    {
-        bossRoomIndex = endRooms.Count > 0 ? endRooms[endRooms.Count - 1] : -1;
-
-        if (bossRoomIndex != -1)
-        {
-            endRooms.RemoveAt(endRooms.Count - 1);
-        }
-
-        shopRoomIndex = RandomEndRoom();
-        secretRoomIndex = PickSecretRoom();
-
-        if (shopRoomIndex == -1 || bossRoomIndex == -1 || secretRoomIndex == -1)
-        {
-            SetupDungeon();
-            return;
-        }
-
-        SpawnRoom(secretRoomIndex);
-
-        UpdateSpecialRoomVisuals();
-        RoomManager.instance.SetupRooms(spawnedCells);
-    }
-
-    void UpdateSpecialRoomVisuals()
-    {
-        foreach (var cell in spawnedCells)
-        {
-            if (cell.index == shopRoomIndex)
+            foreach (var d in dirs)
             {
-                cell.SetSpecialRoomSprite(shop);
-                cell.SetRoomType(RoomType.Shop);
-            }
+                if (cells.Count >= maxRooms) break;
+                var next = curr + d;
+                if (next.x < 0 || next.x >= gridWidth || next.y < 0 || next.y >= gridHeight) continue;
+                if (occupied[next.x, next.y]) continue;
 
-            if (cell.index == bossRoomIndex)
-            {
-                cell.SetSpecialRoomSprite(boss);
-                cell.SetRoomType(RoomType.Boss);
-            }
-
-            if (cell.index == secretRoomIndex)
-            {
-                cell.SetSpecialRoomSprite(secret);
-                cell.SetRoomType(RoomType.Secret);
-            }
-        }
-    }
-
-    int RandomEndRoom()
-    {
-        if (endRooms.Count == 0) return -1;
-
-        int randomRoom = Random.Range(0, endRooms.Count);
-        int index = endRooms[randomRoom];
-
-        endRooms.RemoveAt(randomRoom);
-
-        return index;
-    }
-
-    int PickSecretRoom()
-    {
-        for (int attempt = 0; attempt < 900; attempt++)
-        {
-            int x = Mathf.FloorToInt(Random.Range(0f, 1f) * 9) + 1;
-            int y = Mathf.FloorToInt(Random.Range(0f, 1f) * 8) + 2;
-
-            int index = y * 10 + x;
-
-            if (floorPlan[index] != 0)
-            {
-                continue;
-            }
-
-            if (bossRoomIndex == index - 1 || bossRoomIndex == index + 1 || bossRoomIndex == index + 10 || bossRoomIndex == index - 10)
-            {
-                continue;
-            }
-
-            if (index - 1 < 0 || index + 1 > floorPlan.Length || index - 10 < 0 || index + 10 > floorPlan.Length)
-            {
-                continue;
-            }
-
-            int neighbours = GetNeighbourCount(index);
-
-            if (neighbours >= 3 || (attempt > 300 && neighbours >= 2) || (attempt > 600 && neighbours >= 1))
-            {
-                return index;
+                // Probability to expand, so map is not full grid
+                if (rnd.NextDouble() < 0.6) // tweak to control branching
+                {
+                    occupied[next.x, next.y] = true;
+                    cells.Add(next);
+                    q.Enqueue(next);
+                }
             }
         }
 
-        return -1;
-    }
-
-    private int GetNeighbourCount(int index)
-    {
-        return floorPlan[index - 10] + floorPlan[index - 1] + floorPlan[index + 1] + floorPlan[index + 10];
-    }
-
-    private bool VisitCell(int index)
-    {
-        if (floorPlan[index] != 0 || GetNeighbourCount(index) > 1 || floorPlanCount > maxRooms || Random.value < 0.5f)
-            return false;
-
-        cellQueue.Enqueue(index);
-        floorPlan[index] = 1;
-        floorPlanCount++;
-
-        SpawnRoom(index);
-
-        return true;
-    }
-
-    private void SpawnRoom(int index)
-    {
-        int x = index % 10;
-        int y = index / 10;
-        Vector2 position = new Vector2(x * cellSize, -y * cellSize);
-        if(index == 45)
-            Debug.Log($"{position}");
-
-        Cell newCell = Instantiate(cellPrefab, position, Quaternion.identity);
-        newCell.value = 1;
-        newCell.index = index;
-        newCell.SetRoomShape(RoomShape.OneByOne);
-        newCell.SetRoomType(RoomType.Regular);
-
-        newCell.cellList.Add(index);
-
-        spawnedCells.Add(newCell);
-    }
-
-    private bool TryPlaceRoom(int origin, int[] offsets)
-    {
-        List<int> currentRoomIndexes = new List<int>() { origin };
-
-        foreach (var offset in offsets)
+        // ensure min rooms: if below min, fill random neighbors until min
+        var candidateNeighbours = new List<Vector2Int>();
+        while (cells.Count < minRooms)
         {
-            int currentIndexChecked = origin + offset;
-
-            if (currentIndexChecked - 10 < 0 || currentIndexChecked + 10 >= floorPlan.Length)
+            // collect frontier neighbors
+            candidateNeighbours.Clear();
+            foreach (var c in cells)
             {
-                return false;
+                var potential = new Vector2Int[] { c + Vector2Int.up, c + Vector2Int.down, c + Vector2Int.left, c + Vector2Int.right };
+                foreach (var p in potential)
+                {
+                    if (p.x < 0 || p.x >= gridWidth || p.y < 0 || p.y >= gridHeight) continue;
+                    if (!occupied[p.x, p.y]) candidateNeighbours.Add(p);
+                }
             }
 
-            if (floorPlan[currentIndexChecked] != 0)
+            if (candidateNeighbours.Count == 0) break;
+            var pick = candidateNeighbours[rnd.Next(candidateNeighbours.Count)];
+            occupied[pick.x, pick.y] = true;
+            cells.Add(pick);
+        }
+
+        // Now instantiate rooms (regular by default)
+        foreach (var cell in cells)
+        {
+            Vector2 world = GridToWorld(cell);
+            var prefab = roomPrefabRegular;
+            var go = Instantiate(prefab, world, Quaternion.identity, transform);
+            var rc = go.GetComponent<RoomController>();
+            if (rc == null) rc = go.AddComponent<RoomController>();
+            rc.gridPosition = cell;
+            rc.roomType = RoomType.Regular;
+            roomLookup[cell] = rc;
+        }
+
+        // Build adjacency graph and compute distances from spawn (BFS)
+        var distances = new Dictionary<Vector2Int, int>();
+        var queue = new Queue<Vector2Int>();
+        distances[start] = 0;
+        queue.Enqueue(start);
+        while (queue.Count > 0)
+        {
+            var p = queue.Dequeue();
+            var neighbours = new Vector2Int[] { p + Vector2Int.up, p + Vector2Int.down, p + Vector2Int.left, p + Vector2Int.right };
+            foreach (var n in neighbours)
             {
-                return false;
-            }
-
-            if (currentIndexChecked == origin) continue;
-            if (currentIndexChecked % 10 == 0) continue;
-
-            currentRoomIndexes.Add(currentIndexChecked);
-        }
-
-        if (currentRoomIndexes.Count == 1) return false;
-
-        foreach (int index in currentRoomIndexes)
-        {
-            floorPlan[index] = 1;
-            floorPlanCount++;
-            cellQueue.Enqueue(index);
-
-            bigRoomIndexes.Add(index);
-        }
-
-        SpawnLargeRoom(currentRoomIndexes);
-
-        return true;
-    }
-
-    private void SpawnLargeRoom(List<int> largeRoomIndexes)
-    {
-        Cell newCell = null;
-
-        int combinedX = default;
-        int combinedY = default;
-        float offset = cellSize / 2f;
-
-        for (int i = 0; i < largeRoomIndexes.Count; i++)
-        {
-            int x = largeRoomIndexes[i] % 10;
-            int y = largeRoomIndexes[i] / 10;
-            combinedX += x;
-            combinedY += y;
-        }
-
-        if (largeRoomIndexes.Count == 4)
-        {
-            Vector2 position = new Vector2(combinedX / 4 * cellSize + offset, -combinedY / 4 * cellSize - offset);
-
-            newCell = Instantiate(cellPrefab, position, Quaternion.identity);
-        }
-
-        if (largeRoomIndexes.Count == 3)
-        {
-            Vector2 position = new Vector2(combinedX / 3 * cellSize + offset, -combinedY / 3 * cellSize - offset);
-            newCell = Instantiate(cellPrefab, position, Quaternion.identity);
-            newCell.RotateCell(largeRoomIndexes);
-        }
-
-        if (largeRoomIndexes.Count == 2)
-        {
-            if (largeRoomIndexes[0] + 10 == largeRoomIndexes[1] || largeRoomIndexes[0] - 10 == largeRoomIndexes[1])
-            {
-                Vector2 position = new Vector2(combinedX / 2 * cellSize, -combinedY / 2 * cellSize - offset);
-                newCell = Instantiate(cellPrefab, position, Quaternion.identity);
-            }
-            else if (largeRoomIndexes[0] + 1 == largeRoomIndexes[1] || largeRoomIndexes[0] - 1 == largeRoomIndexes[1])
-            {
-                Vector2 position = new Vector2(combinedX / 2 * cellSize + offset, -combinedY / 2 * cellSize);
-                newCell = Instantiate(cellPrefab, position, Quaternion.identity);
+                if (!roomLookup.ContainsKey(n)) continue;
+                if (distances.ContainsKey(n)) continue;
+                distances[n] = distances[p] + 1;
+                queue.Enqueue(n);
             }
         }
 
-        newCell.cellList = largeRoomIndexes;
-        newCell.cellList.Sort();
-        spawnedCells.Add(newCell);
+        // Assign graphDistance into RoomController
+        foreach (var kv in roomLookup)
+        {
+            var rc = kv.Value;
+            if (distances.TryGetValue(kv.Key, out int d))
+                rc.graphDistance = d;
+            else
+                rc.graphDistance = int.MaxValue;
+        }
+
+        // Pick boss/shop/secret:
+        // boss = furthest from start (choose one of max distance rooms)
+        int maxDist = distances.Values.Max();
+        var furthest = distances.Where(kv => kv.Value == maxDist).Select(kv => kv.Key).ToList();
+        var bossPos = furthest[rnd.Next(furthest.Count)];
+        roomLookup[bossPos].roomType = RoomType.Boss;
+
+        // remove boss from candidate set
+        var remaining = roomLookup.Keys.Where(k => k != bossPos).ToList();
+
+        // pick shop: random end-room (degree 1) if available, else random
+        var endRooms = roomLookup.Keys.Where(k =>
+        {
+            int neigh = 0;
+            var p = k;
+            if (roomLookup.ContainsKey(p + Vector2Int.up)) neigh++;
+            if (roomLookup.ContainsKey(p + Vector2Int.down)) neigh++;
+            if (roomLookup.ContainsKey(p + Vector2Int.left)) neigh++;
+            if (roomLookup.ContainsKey(p + Vector2Int.right)) neigh++;
+            return neigh == 1;
+        }).Where(k => k != bossPos).ToList();
+
+        Vector2Int shopPos;
+        if (endRooms.Count > 0)
+            shopPos = endRooms[rnd.Next(endRooms.Count)];
+        else
+            shopPos = remaining[rnd.Next(remaining.Count)];
+        roomLookup[shopPos].roomType = RoomType.Shop;
+
+        // pick secret: choose a room that is empty neighbor (we'll just pick a random internal room not boss/shop)
+        var secretCandidates = roomLookup.Keys.Where(k => k != bossPos && k != shopPos).ToList();
+        var secretPos = secretCandidates[rnd.Next(secretCandidates.Count)];
+        roomLookup[secretPos].roomType = RoomType.Secret;
+
+        // Update visuals by swapping prefabs or changing contents:
+        // For simplicity we will swap to specific prefab variants for boss/shop/secret
+        foreach (var kv in roomLookup.ToList())
+        {
+            var pos = kv.Key;
+            var rc = kv.Value;
+
+            switch (rc.roomType)
+            {
+                case RoomType.Boss:
+                    ReplaceRoomPrefab(rc, roomPrefabBoss);
+                    break;
+                case RoomType.Shop:
+                    ReplaceRoomPrefab(rc, roomPrefabShop);
+                    break;
+                case RoomType.Secret:
+                    ReplaceRoomPrefab(rc, roomPrefabSecret);
+                    break;
+            }
+        }
+
+        // Finally set doors/walls by checking neighbors
+        foreach (var kv in roomLookup)
+        {
+            var pos = kv.Key;
+            var rc = kv.Value;
+            bool up = roomLookup.ContainsKey(pos + Vector2Int.up);
+            bool down = roomLookup.ContainsKey(pos + Vector2Int.down);
+            bool left = roomLookup.ContainsKey(pos + Vector2Int.left);
+            bool right = roomLookup.ContainsKey(pos + Vector2Int.right);
+
+            rc.SetDoorState(up, down, left, right);
+        }
+
+        foreach (var kv in roomLookup)
+        {
+            var pos = kv.Key;
+            var rc = kv.Value;
+
+            LinkDoors(rc, pos + Vector2Int.up, "Up", "Down");
+            LinkDoors(rc, pos + Vector2Int.down, "Down", "Up");
+            LinkDoors(rc, pos + Vector2Int.left, "Left", "Right");
+            LinkDoors(rc, pos + Vector2Int.right, "Right", "Left");
+        }
+
+        // Local helper function (can be private inside MapGenerator)
+        void LinkDoors(RoomController room, Vector2Int neighborPos, string fromDir, string toDir)
+        {
+            if (!roomLookup.ContainsKey(neighborPos)) return;
+
+            var neighbor = roomLookup[neighborPos];
+
+            var fromDoor = room.GetDoorByName(fromDir);
+            var toDoor = neighbor.GetDoorByName(toDir);
+
+            if (fromDoor != null && toDoor != null)
+            {
+                var trigger = fromDoor.GetComponent<DoorTrigger>();
+                if (trigger != null)
+                {
+                    trigger.targetRoom = neighbor;
+                    trigger.targetSpawnPoint = toDoor.transform.Find("SpawnPoint");
+                }
+            }
+        }
+
+        // Register rooms in RoomManager so camera and map UI can use them
+        RoomManager.Instance.RegisterGeneratedRooms(roomLookup.Values.ToList());
+
+        // --- Spawn player at start room ---
+        Vector2 startWorld = GridToWorld(start);
+
+        // remove existing player
+        if (playerInstance != null)
+        {
+            Destroy(playerInstance);
+        }
+
+        startWorld += new Vector2(0.2f, -0.2f); // tweak these to fine-align
+
+        // spawn
+        playerInstance = Instantiate(playerPrefab, startWorld, Quaternion.identity);
+
+        // optional slight upward offset (depends on prefab pivot)
+        playerInstance.transform.position += Vector3.up * 0.5f;
+
+        Debug.Log($"Spawned player at world {startWorld}");
+
+        Debug.Log($"Spawn grid: ({startX}, {startY})   Grid size: {gridWidth}x{gridHeight}");
+
+    }
+
+    Vector2 GridToWorld(Vector2Int grid)
+    {
+        // center grid around origin: compute offset so center of grid is at (0,0)
+        float centerOffsetX = (gridWidth - 1) / 2f;
+        float centerOffsetY = (gridHeight - 1) / 2f;
+
+        float wx = (grid.x - centerOffsetX) * roomSpacingX;
+        float wy = (grid.y - centerOffsetY) * roomSpacingY;
+        return new Vector2(wx, wy);
+    }
+
+    void ReplaceRoomPrefab(RoomController rc, GameObject newPrefab)
+    {
+        if (newPrefab == null) return;
+        // Capture grid position and destroy old
+        var grid = rc.gridPosition;
+        var pos = rc.transform.position;
+        Destroy(rc.gameObject);
+
+        var go = Instantiate(newPrefab, pos, Quaternion.identity, transform);
+        var newRc = go.GetComponent<RoomController>();
+        if (newRc == null) newRc = go.AddComponent<RoomController>();
+        newRc.gridPosition = grid;
+        newRc.roomType = DetermineRoomTypeFromPrefab(newPrefab);
+        roomLookup[grid] = newRc;
+    }
+
+    RoomType DetermineRoomTypeFromPrefab(GameObject prefab)
+    {
+        // If you need typed prefabs you can add logic here.
+        if (prefab == roomPrefabBoss) return RoomType.Boss;
+        if (prefab == roomPrefabShop) return RoomType.Shop;
+        if (prefab == roomPrefabSecret) return RoomType.Secret;
+        return RoomType.Regular;
     }
 }

@@ -1,141 +1,51 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-
+using System.Linq;
 public class RoomManager : MonoBehaviour
 {
-    private List<Room> createdRooms;
+    public static RoomManager Instance { get; private set; }
 
-    [Header("Offset Variables")]
-    public float offsetX;
-    public float offsetY;
+    public List<RoomController> createdRooms = new List<RoomController>();
 
-    [Header("Prefab References")]
-    public Room roomPrefab;
-    public Door doorPrefab;
+    // Camera smoothing settings
+    [Header("Camera")]
+    public Camera mainCamera;
+    public float cameraSmoothTime = 0.15f; // lower = snappier
 
-    [Header("Scriptable Object References")]
-    public DoorScriptable[] doors;
-    public RoomScriptable[] rooms;
-
-    [Header("Tilemap Room Prefabs")]
-    public GameObject regularRoomPrefab;
-    public GameObject shopRoomPrefab;
-    public GameObject bossRoomPrefab;
-    public GameObject secretRoomPrefab;
-
-    public static RoomManager instance;
+    Vector3 cameraVelocity = Vector3.zero;
+    RoomController currentRoom;
 
     private void Awake()
     {
-        instance = this;
-        createdRooms = new List<Room>();
+        Instance = this;
+        if (mainCamera == null) mainCamera = Camera.main;
     }
 
-    public void SetupRooms(List<Cell> spawnedCells)
+    public void RegisterGeneratedRooms(List<RoomController> rooms)
     {
-        for (int i = createdRooms.Count - 1; i >= 0; i--)
-            Destroy(createdRooms[i].gameObject);
-        createdRooms.Clear();
-
-        float minX = float.MaxValue, minY = float.MaxValue;
-        float maxX = float.MinValue, maxY = float.MinValue;
-
-        foreach (var cell in spawnedCells)
+        createdRooms = rooms;
+        // Optionally find start/current based on spawn coords (graph distance 0)
+        currentRoom = createdRooms.OrderBy(r => r.graphDistance).FirstOrDefault();
+        // place camera initially at currentRoom center instantly
+        if (currentRoom != null && mainCamera != null)
         {
-            Vector2 pos = cell.transform.position;
-            minX = Mathf.Min(minX, pos.x);
-            minY = Mathf.Min(minY, pos.y);
-            maxX = Mathf.Max(maxX, pos.x);
-            maxY = Mathf.Max(maxY, pos.y);
+            mainCamera.transform.position = new Vector3(currentRoom.transform.position.x, currentRoom.transform.position.y, mainCamera.transform.position.z);
         }
-
-        Vector2 gridCenter = new Vector2((minX + maxX) / 2f, (minY + maxY) / 2f);
-
-        foreach (var currentCell in spawnedCells)
-        {
-            var foundRoom = rooms.FirstOrDefault(x => x.roomShape == currentCell.roomShape && x.roomType == currentCell.roomType && DoesTileMatchCell(x.occupiedTiles, currentCell));
-
-            var currentPosition = (Vector2)currentCell.transform.position - gridCenter;
-
-            var convertedPosition = new Vector2(currentPosition.x * offsetX, currentPosition.y * offsetY);
-
-            GameObject prefabToSpawn = null;
-
-            switch (currentCell.roomType)
-            {
-                case RoomType.Shop:
-                    prefabToSpawn = shopRoomPrefab;
-                    break;
-                case RoomType.Boss:
-                    prefabToSpawn = bossRoomPrefab;
-                    break;
-                case RoomType.Secret:
-                    prefabToSpawn = secretRoomPrefab;
-                    break;
-                default:
-                    prefabToSpawn = regularRoomPrefab;
-                    break;
-            }
-
-            if (prefabToSpawn == null)
-            {
-                Debug.LogWarning($"No prefab assigned for {currentCell.roomType}");
-                continue;
-            }
-
-            GameObject newRoom = Instantiate(prefabToSpawn, convertedPosition, Quaternion.identity);
-
-            Room roomComponent = newRoom.GetComponent<Room>();
-            if (roomComponent != null)
-            {
-                roomComponent.SetupRoom(currentCell, foundRoom);
-                createdRooms.Add(roomComponent);
-            }
-        }
-
-        var player = GameObject.FindWithTag("Player");
-        if (player == null)
-        {
-            Debug.LogWarning("Player not found in scene (tag 'Player'). Can't center map.");
-            return;
-        }
-
-        Vector2 avg = Vector2.zero;
-        foreach (var room in createdRooms)
-            avg += (Vector2)room.transform.position;
-
-        avg /= createdRooms.Count;
-
-        Vector2 offset = (Vector2)player.transform.position - avg;
-
-        foreach (var room in createdRooms)
-            room.transform.position += (Vector3)offset;
-
+        // tell MapUI to build minimap (if any)
+        MapUI.Instance?.BuildMap(createdRooms);
     }
 
-    private bool DoesTileMatchCell(int[] occupiedTiles, Cell cell)
+    public void NotifyPlayerEnteredRoom(RoomController rc)
     {
-        if (occupiedTiles.Length != cell.cellList.Count)
-            return false;
+        if (rc == currentRoom) return;
+        currentRoom = rc;
+        // update camera target (smoothly in LateUpdate)
+    }
 
-        int minIndex = cell.cellList.Min();
-        List<int> normalizedCell = new List<int>();
-
-        foreach (int index in cell.cellList)
-        {
-            int dx = (index % 10) - (minIndex % 10);
-            int dy = (index / 10) - (minIndex / 10);
-
-            normalizedCell.Add(dy * 10 + dx);
-        }
-
-        normalizedCell.Sort();
-        int[] sortedOccupied = (int[])occupiedTiles.Clone();
-        Array.Sort(sortedOccupied);
-
-        return normalizedCell.SequenceEqual(sortedOccupied);
+    private void LateUpdate()
+    {
+        if (currentRoom == null || mainCamera == null) return;
+        Vector3 target = new Vector3(currentRoom.transform.position.x, currentRoom.transform.position.y, mainCamera.transform.position.z);
+        mainCamera.transform.position = Vector3.SmoothDamp(mainCamera.transform.position, target, ref cameraVelocity, cameraSmoothTime);
     }
 }
