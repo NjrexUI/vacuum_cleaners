@@ -99,18 +99,18 @@ public class RoomManager : MonoBehaviour
 
         // Disable player movement completely
         var player = GameObject.FindGameObjectWithTag("Player");
-        PlayerMovement move = null;
+        PlayerCarDashMovementChaotic move = null;
         Rigidbody2D rb = null;
 
         if (player != null)
         {
-            move = player.GetComponent<PlayerMovement>();
+            move = player.GetComponent<PlayerCarDashMovementChaotic>();
             rb = player.GetComponent<Rigidbody2D>();
 
             if (move != null)
             {
-                move.enabled = false;
-                move.StopInstantly(); // ✅ stop immediately, removes leftover velocity
+                move.EnableMovement(false);
+                move.StopMovementImmediate(); // ✅ stop immediately, removes leftover velocity
             }
 
             if (rb != null)
@@ -147,7 +147,7 @@ public class RoomManager : MonoBehaviour
         // ✅ Re-enable player movement now
         if (move != null)
         {
-            move.enabled = true;
+            move.EnableMovement(true);
             if (rb != null) rb.linearVelocity = Vector2.zero;
         }
 

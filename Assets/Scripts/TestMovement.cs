@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerCarDashMovementChaotic : MonoBehaviour
@@ -17,16 +17,16 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
     public float dashTurnRate = 4f;
 
     [Header("Chaos Visuals")]
-    public float chaosSpinSpeed = 360f;        // Degrees per second of chaos spin
-    public float chaosIntensity = 1.5f;        // How wild the rotation gets
-    public float chaosRecoverySpeed = 6f;      // How quickly rotation returns to normal after dash
+    public float chaosSpinSpeed = 360f;
+    public float chaosIntensity = 1.5f;
+    public float chaosRecoverySpeed = 6f;
 
     private Rigidbody2D rb;
     private Vector2 inputDir;
     private bool isDashing = false;
     private float nextDashTime = 0f;
 
-    // Internal rotation chaos state
+    private bool movementEnabled = true;  // ✅ Movement toggle
     private float chaosAngleOffset = 0f;
     private float chaosSpinDirection = 1f;
 
@@ -42,24 +42,29 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
 
     void Update()
     {
+        if (!movementEnabled)
+        {
+            _animator.SetBool("isRunning", false);
+            return;
+        }
+
         // WASD input
         inputDir.x = Input.GetAxisRaw("Horizontal");
         inputDir.y = Input.GetAxisRaw("Vertical");
         inputDir.Normalize();
 
-        
-        _animator.SetBool("isRunning", inputDir.x != 0 || inputDir.y != 0);
-
+        _animator.SetBool("isRunning", inputDir.x != 0 || inputDir.y != 0 || isDashing);
 
         // Start dash
         if (Input.GetKeyDown(KeyCode.Space) && !isDashing && Time.time > nextDashTime)
             StartCoroutine(Dash());
-
-        //UpdateRotation();
     }
 
     void FixedUpdate()
     {
+        if (!movementEnabled)
+            return;
+
         if (isDashing)
             HandleDashMovement();
         else
@@ -86,14 +91,14 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
             rb.linearVelocity = desiredDir * currentSpeed;
         }
 
-        // Add extra control acceleration
+        // Add drift control
         rb.linearVelocity += inputDir * (moveSpeed * dashDriftControl * Time.fixedDeltaTime);
 
-        // Apply friction
+        // Apply friction (slows correctly)
         float slowFactor = Mathf.Clamp01(dashFriction * Time.fixedDeltaTime);
         rb.linearVelocity *= (1f - slowFactor);
 
-        // Add chaotic rotation torque
+        // Add chaotic spin
         chaosSpinDirection = Mathf.Sign(inputDir.x + Random.Range(-0.5f, 0.5f));
         chaosAngleOffset += chaosSpinDirection * chaosSpinSpeed * Time.deltaTime * Random.Range(0.7f, 1.3f);
     }
@@ -108,11 +113,37 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
             dashDir = transform.up;
 
         rb.linearVelocity = dashDir * dashForce;
-
-        chaosAngleOffset = 0f; // Reset chaos at start of dash
+        chaosAngleOffset = 0f;
 
         yield return new WaitForSeconds(dashDuration);
         isDashing = false;
+    }
+
+    // ----------------------
+    // 🔹 Utility Functions 🔹
+    // ----------------------
+
+    /// <summary>
+    /// Instantly stops all movement and rotation.
+    /// </summary>
+    public void StopMovementImmediate()
+    {
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        _animator?.SetBool("isRunning", false);
+    }
+
+    /// <summary>
+    /// Enables or disables player movement entirely (useful for cutscenes, dialogues, etc).
+    /// </summary>
+    public void EnableMovement(bool enable)
+    {
+        movementEnabled = enable;
+
+        if (!enable)
+        {
+            StopMovementImmediate();
+        }
     }
 
     private void UpdateRotation()
@@ -124,10 +155,8 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
             return;
         }
 
-        // Base facing direction
         float targetAngle = Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg - 90f;
 
-        // Add chaos spin when dashing
         if (isDashing)
         {
             float randomShake = Mathf.Sin(Time.time * 10f + Random.value * 3f) * 10f * chaosIntensity;
@@ -136,7 +165,6 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
         }
         else
         {
-            // Smoothly reorient after dash
             transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, targetAngle), Time.deltaTime * chaosRecoverySpeed);
             chaosAngleOffset = Mathf.Lerp(chaosAngleOffset, 0f, Time.deltaTime * chaosRecoverySpeed);
         }
