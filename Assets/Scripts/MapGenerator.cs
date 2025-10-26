@@ -4,7 +4,7 @@ using System.Linq;
 public class MapGenerator : MonoBehaviour
 {
     [Header("Player Spawn")]
-    public GameObject playerPrefab;   // assign in Inspector
+    public GameObject playerPrefab;   
     private GameObject playerInstance;
 
     [Header("Grid")]
@@ -212,37 +212,77 @@ public class MapGenerator : MonoBehaviour
             rc.SetDoorState(up, down, left, right);
         }
 
-        foreach (var kv in roomLookup)
+        // ----------------------
+        // Link DoorTrigger.targetRoom + spawn offsets
+        // ----------------------
+        foreach (var kv in roomLookup.ToList())
         {
-            var pos = kv.Key;
-            var rc = kv.Value;
+            Vector2Int pos = kv.Key;
+            RoomController rc = kv.Value;
 
-            LinkDoors(rc, pos + Vector2Int.up, "Up", "Down");
-            LinkDoors(rc, pos + Vector2Int.down, "Down", "Up");
-            LinkDoors(rc, pos + Vector2Int.left, "Left", "Right");
-            LinkDoors(rc, pos + Vector2Int.right, "Right", "Left");
-        }
-
-        // Local helper function (can be private inside MapGenerator)
-        void LinkDoors(RoomController room, Vector2Int neighborPos, string fromDir, string toDir)
-        {
-            if (!roomLookup.ContainsKey(neighborPos)) return;
-
-            var neighbor = roomLookup[neighborPos];
-
-            var fromDoor = room.GetDoorByName(fromDir);
-            var toDoor = neighbor.GetDoorByName(toDir);
-
-            if (fromDoor != null && toDoor != null)
+            // For each direction, if neighbor exists, add (or configure) the DoorTrigger
+            // on the *neighbor's* complementary door (so colliding with neighbor door triggers entry to neighbor)
+            // UP neighbor -> neighbor's DOWN door
+            if (roomLookup.ContainsKey(pos + Vector2Int.up))
             {
-                var trigger = fromDoor.GetComponent<DoorTrigger>();
-                if (trigger != null)
+                var neighbor = roomLookup[pos + Vector2Int.up];
+                if (neighbor.doorPlaceDown != null)
                 {
-                    trigger.targetRoom = neighbor;
-                    trigger.targetSpawnPoint = toDoor.transform.Find("SpawnPoint");
+                    var doorChild = neighbor.doorPlaceDown.Find("Door");
+                    if (doorChild != null)
+                    {
+                        var dt = doorChild.GetComponent<DoorTrigger>() ?? doorChild.gameObject.AddComponent<DoorTrigger>();
+                        dt.targetRoom = neighbor;
+                    }
+                }
+            }
+
+            // DOWN neighbor -> neighbor's UP door
+            if (roomLookup.ContainsKey(pos + Vector2Int.down))
+            {
+                var neighbor = roomLookup[pos + Vector2Int.down];
+                if (neighbor.doorPlaceUp != null)
+                {
+                    var doorChild = neighbor.doorPlaceUp.Find("Door");
+                    if (doorChild != null)
+                    {
+                        var dt = doorChild.GetComponent<DoorTrigger>() ?? doorChild.gameObject.AddComponent<DoorTrigger>();
+                        dt.targetRoom = neighbor;
+                    }
+                }
+            }
+
+            // LEFT neighbor -> neighbor's RIGHT door
+            if (roomLookup.ContainsKey(pos + Vector2Int.left))
+            {
+                var neighbor = roomLookup[pos + Vector2Int.left];
+                if (neighbor.doorPlaceRight != null)
+                {
+                    var doorChild = neighbor.doorPlaceRight.Find("Door");
+                    if (doorChild != null)
+                    {
+                        var dt = doorChild.GetComponent<DoorTrigger>() ?? doorChild.gameObject.AddComponent<DoorTrigger>();
+                        dt.targetRoom = neighbor;
+                    }
+                }
+            }
+
+            // RIGHT neighbor -> neighbor's LEFT door
+            if (roomLookup.ContainsKey(pos + Vector2Int.right))
+            {
+                var neighbor = roomLookup[pos + Vector2Int.right];
+                if (neighbor.doorPlaceLeft != null)
+                {
+                    var doorChild = neighbor.doorPlaceLeft.Find("Door");
+                    if (doorChild != null)
+                    {
+                        var dt = doorChild.GetComponent<DoorTrigger>() ?? doorChild.gameObject.AddComponent<DoorTrigger>();
+                        dt.targetRoom = neighbor;
+                    }
                 }
             }
         }
+
 
         // Register rooms in RoomManager so camera and map UI can use them
         RoomManager.Instance.RegisterGeneratedRooms(roomLookup.Values.ToList());
