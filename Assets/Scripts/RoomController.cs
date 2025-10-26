@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 public class RoomController : MonoBehaviour
 {
     public Vector2Int gridPosition;        // set by generator (x,y in grid)
@@ -49,8 +50,7 @@ public class RoomController : MonoBehaviour
             child.gameObject.SetActive(active);
     }
 
-    // Room enter/exit detection — requires the prefab root Collider2D set to isTrigger.
-    private void OnTriggerEnter2D(Collider2D other)
+    /*private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
         {
@@ -60,6 +60,48 @@ public class RoomController : MonoBehaviour
     public Transform GetDoorByName(string name)
     {
         return transform.Find($"Doors/{name}Door");
+    }*/
+    
+    private List<DoorTrigger> cachedDoorTriggers = new();
+
+    private void Start()
+    {
+        CacheDoorTriggers();
     }
 
+    void CacheDoorTriggers()
+    {
+        cachedDoorTriggers.Clear();
+        AddTriggersFromPlace(doorPlaceUp);
+        AddTriggersFromPlace(doorPlaceDown);
+        AddTriggersFromPlace(doorPlaceLeft);
+        AddTriggersFromPlace(doorPlaceRight);
+    }
+
+    void AddTriggersFromPlace(Transform place)
+    {
+        if (place == null) return;
+        var doorChild = place.Find("Door");
+        if (doorChild != null)
+        {
+            var trigger = doorChild.GetComponent<DoorTrigger>();
+            if (trigger != null)
+                cachedDoorTriggers.Add(trigger);
+        }
+    }
+
+    public void SetDoorTriggersActive(bool active)
+    {
+        foreach (var trigger in cachedDoorTriggers)
+            if (trigger != null)
+                trigger.enabled = active;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            RoomManager.Instance.NotifyPlayerEnteredRoom(this);
+        }
+    }
 }

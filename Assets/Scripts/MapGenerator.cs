@@ -230,8 +230,6 @@ public class MapGenerator : MonoBehaviour
                     if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
 
                     dt.targetRoom = roomLookup[pos + Vector2Int.up];
-                    // when going up, player should appear slightly below center of target room
-                    dt.playerSpawnOffset = Vector2.down * (roomSpacingY * 0.25f);
                 }
             }
 
@@ -245,7 +243,6 @@ public class MapGenerator : MonoBehaviour
                     if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
 
                     dt.targetRoom = roomLookup[pos + Vector2Int.down];
-                    dt.playerSpawnOffset = Vector2.up * (roomSpacingY * 0.25f);
                 }
             }
 
@@ -259,7 +256,6 @@ public class MapGenerator : MonoBehaviour
                     if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
 
                     dt.targetRoom = roomLookup[pos + Vector2Int.left];
-                    dt.playerSpawnOffset = Vector2.right * (roomSpacingX * 0.25f);
                 }
             }
 
@@ -273,7 +269,6 @@ public class MapGenerator : MonoBehaviour
                     if (dt == null) dt = doorChild.gameObject.AddComponent<DoorTrigger>();
 
                     dt.targetRoom = roomLookup[pos + Vector2Int.right];
-                    dt.playerSpawnOffset = Vector2.left * (roomSpacingX * 0.25f);
                 }
             }
         }
