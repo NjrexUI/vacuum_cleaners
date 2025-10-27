@@ -18,6 +18,13 @@ public class CameraController : MonoBehaviour
     private void Start()
     {
         targetPosition = transform.position;
+
+        var cam = GetComponent<Camera>();
+        if (cam.targetTexture != null)
+        {
+            cam.Render();
+        }
+
     }
 
     private void LateUpdate()
