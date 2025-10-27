@@ -13,6 +13,8 @@ public class DoorTrigger : MonoBehaviour
     private bool isTransitioning = false;
     private Collider2D doorCollider;
 
+    [HideInInspector] public RoomController parentRoom;
+
     private void Awake()
     {
         doorCollider = GetComponent<Collider2D>();
@@ -40,9 +42,23 @@ public class DoorTrigger : MonoBehaviour
     {
         RoomManager.Instance.IsCameraMoving = true;
 
-        RoomManager.Instance.NotifyPlayerEnteredRoom(targetRoom);
+        var previousRoom = RoomManager.Instance.CurrentRoom;
+        var newRoom = targetRoom;
 
-        yield return RoomManager.Instance.MoveCameraToRoom(targetRoom);
+        if (previousRoom != null)
+            previousRoom.OnPlayerExitedRoom();
+
+        // Notify manager
+        RoomManager.Instance.NotifyPlayerEnteredRoom(newRoom);
+
+        // Move camera
+        yield return RoomManager.Instance.MoveCameraToRoom(newRoom);
+
+        // Now that camera finished, activate enemies & seal doors
+        newRoom.OnPlayerEnteredRoom();
+
+        Vector3 enterDirection = (targetRoom.transform.position - player.transform.position).normalized;
+        player.transform.position += enterDirection * 1.0f; // move 1 unit inside
 
         RoomManager.Instance.IsCameraMoving = false;
         isTransitioning = false;

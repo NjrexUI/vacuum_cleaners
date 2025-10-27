@@ -49,11 +49,6 @@ public class RoomManager : MonoBehaviour
             CurrentRoom.SetDoorTriggersActive(false);
 
         EnableNeighborRoomTriggers(CurrentRoom);
-
-        if (previousRoom != null && previousRoom != CurrentRoom)
-        {
-            previousRoom.SetDoorTriggersActive(false);
-        }
     }
 
     public void EnableNeighborRoomTriggers(RoomController room)
@@ -142,5 +137,11 @@ public class RoomManager : MonoBehaviour
 
         yield break;
     }
+
+    public bool HasRoomAt(Vector2Int gridPos)
+    {
+        return createdRooms.Any(r => r.gridPosition == gridPos);
+    }
+
     public bool IsCameraMoving { get; set; }
 }

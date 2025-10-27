@@ -108,12 +108,6 @@ public class MapGenerator : MonoBehaviour
             rc.gridPosition = cell;
             rc.roomType = RoomType.Regular;
             roomLookup[cell] = rc;
-
-            var spawner = go.GetComponent<RoomEnemySpawner>();
-            if (spawner != null)
-            {
-                spawner.SpawnEnemies();
-            }
         }
 
         var distances = new Dictionary<Vector2Int, int>();

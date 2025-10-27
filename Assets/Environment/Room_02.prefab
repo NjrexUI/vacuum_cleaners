@@ -149,6 +149,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRoom: {fileID: 0}
   enterOffset: 0.7
+  parentRoom: {fileID: 0}
 --- !u!1 &1052475471999689787
 GameObject:
   m_ObjectHideFlags: 0
@@ -298,6 +299,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRoom: {fileID: 0}
   enterOffset: 0.7
+  parentRoom: {fileID: 0}
 --- !u!1 &2542291685113897440
 GameObject:
   m_ObjectHideFlags: 0
@@ -447,6 +449,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRoom: {fileID: 0}
   enterOffset: 0.7
+  parentRoom: {fileID: 0}
 --- !u!1 &2972132413365018415
 GameObject:
   m_ObjectHideFlags: 0
@@ -659,6 +662,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRoom: {fileID: 0}
   enterOffset: 0.7
+  parentRoom: {fileID: 0}
 --- !u!61 &7754996532926505058
 BoxCollider2D:
   m_ObjectHideFlags: 0

@@ -26,9 +26,10 @@ public class EnemyBasic : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 hoverOffset;
 
+    private bool aiActive = true;
+
     public void AssignToRoom(RoomController room)
     {
-        if (room == null) return;
         currentRoom = room;
     }
 
@@ -38,7 +39,6 @@ public class EnemyBasic : MonoBehaviour
         rb.gravityScale = 0;
         rb.freezeRotation = true;
 
-        // Find player by tag once
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
             player = p.transform;
@@ -46,11 +46,22 @@ public class EnemyBasic : MonoBehaviour
         RoomController room = GetComponentInParent<RoomController>();
         if (room != null)
             room.RegisterEnemy(this);
+
+        SetAIActive(true);
+    }
+
+    public void SetAIActive(bool active)
+    {
+        aiActive = active;
+        if (!aiActive && rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
     }
 
     void Update()
     {
-        if (player == null) return;
+        if (!aiActive || player == null) return;
 
         HandleMovement();
         HandleHover();
@@ -75,7 +86,6 @@ public class EnemyBasic : MonoBehaviour
 
     void HandleHover()
     {
-        // Small circular offset for visual motion
         hoverOffset.x = Mathf.Cos(Time.time * hoverSpeed) * hoverRadius;
         hoverOffset.y = Mathf.Sin(Time.time * hoverSpeed) * hoverRadius;
         transform.localPosition += (Vector3)(hoverOffset * Time.deltaTime);
@@ -93,7 +103,6 @@ public class EnemyBasic : MonoBehaviour
     void HandleShooting()
     {
         if (Time.time < nextFireTime) return;
-
         Shoot();
         nextFireTime = Time.time + fireRate;
     }
@@ -108,20 +117,18 @@ public class EnemyBasic : MonoBehaviour
 
         Instantiate(bulletPrefab, firePoint.position, rot);
     }
+
     public void TakeDamage(int amount)
     {
         health -= amount;
         if (health <= 0)
-        {
             Die();
-        }
     }
 
     void Die()
     {
-        RoomController room = GetComponentInParent<RoomController>();
-        if (room != null)
-            room.UnregisterEnemy(this);
+        if (currentRoom != null)
+            currentRoom.UnregisterEnemy(this);
 
         Destroy(gameObject);
     }
