@@ -34,7 +34,6 @@ public class RoomManager : MonoBehaviour
 
         MapUI.Instance?.BuildMap(createdRooms);
 
-        // Disable all, then enable only current room’s neighbors
         foreach (var r in createdRooms) r.SetDoorTriggersActive(false);
         EnableNeighborRoomTriggers(CurrentRoom);
     }
@@ -46,14 +45,11 @@ public class RoomManager : MonoBehaviour
         previousRoom = CurrentRoom;
         CurrentRoom = rc;
 
-        // 1) Disable triggers of the room player is now in (so they don't fire while player is inside)
         if (CurrentRoom != null)
             CurrentRoom.SetDoorTriggersActive(false);
 
-        // 2) Enable triggers on adjacent rooms (so colliding with neighbor room's door triggers entry into that room)
         EnableNeighborRoomTriggers(CurrentRoom);
 
-        // Optionally disable previousRoom triggers were already disabled by above, but safe to call:
         if (previousRoom != null && previousRoom != CurrentRoom)
         {
             previousRoom.SetDoorTriggersActive(false);
@@ -66,13 +62,11 @@ public class RoomManager : MonoBehaviour
 
         Vector2Int pos = room.gridPosition;
 
-        // for each neighbor, enable *that neighbor's* door triggers (these lead into neighbor)
         var dirUp = pos + Vector2Int.up;
         var dirDown = pos + Vector2Int.down;
         var dirLeft = pos + Vector2Int.left;
         var dirRight = pos + Vector2Int.right;
 
-        // Helper: enable triggers on a neighbor if it exists
         void EnableIfExists(Vector2Int p)
         {
             var neighbor = createdRooms.FirstOrDefault(r => r.gridPosition == p);
@@ -93,11 +87,9 @@ public class RoomManager : MonoBehaviour
 
         isCameraMoving = true;
 
-        // Disable *all* door triggers globally during transition
         foreach (var r in createdRooms)
             r.SetDoorTriggersActive(false);
 
-        // Disable player movement completely
         var player = GameObject.FindGameObjectWithTag("Player");
         PlayerMovement move = null;
         Rigidbody2D rb = null;
@@ -110,7 +102,7 @@ public class RoomManager : MonoBehaviour
             if (move != null)
             {
                 move.enabled = false;
-                move.StopInstantly(); // ✅ stop immediately, removes leftover velocity
+                move.StopInstantly();
             }
 
             if (rb != null)
@@ -123,7 +115,6 @@ public class RoomManager : MonoBehaviour
         float timeout = 1.5f;
         float elapsed = 0f;
 
-        // Smooth camera move
         while (Vector3.Distance(mainCamera.transform.position, targetPos) > threshold && elapsed < timeout)
         {
             mainCamera.transform.position = Vector3.SmoothDamp(
@@ -141,10 +132,8 @@ public class RoomManager : MonoBehaviour
         CurrentRoom = targetRoom;
         isCameraMoving = false;
 
-        // ✅ Re-enable only the *current room’s* door triggers
         EnableNeighborRoomTriggers(CurrentRoom);
 
-        // ✅ Re-enable player movement now
         if (move != null)
         {
             move.enabled = true;
@@ -153,6 +142,5 @@ public class RoomManager : MonoBehaviour
 
         yield break;
     }
-
-    public bool IsCameraMoving => isCameraMoving;
+    public bool IsCameraMoving { get; set; }
 }

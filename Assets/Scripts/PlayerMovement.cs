@@ -24,21 +24,18 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Don�t allow input while camera transitions are happening
         if (RoomManager.Instance != null && RoomManager.Instance.IsCameraMoving)
         {
             moveInput = Vector2.zero;
             if (animator) animator.SetFloat("Speed", 0);
             return;
         }
-
-        // Get movement input
+        
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
 
         moveInput = moveInput.normalized;
 
-        // Update animation parameters
         if (animator)
         {
             animator.SetFloat("Horizontal", moveInput.x);
@@ -46,7 +43,6 @@ public class PlayerMovement : MonoBehaviour
             animator.SetFloat("Speed", moveInput.sqrMagnitude);
         }
 
-        // Flip sprite based on direction (optional)
         if (spriteRenderer && moveInput.x != 0)
         {
             spriteRenderer.flipX = moveInput.x < 0;
@@ -55,7 +51,6 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Smooth acceleration & deceleration
         Vector2 targetVelocity = moveInput * moveSpeed;
         currentVelocity = Vector2.Lerp(currentVelocity, targetVelocity,
             (moveInput.sqrMagnitude > 0 ? acceleration : deceleration) * Time.fixedDeltaTime);

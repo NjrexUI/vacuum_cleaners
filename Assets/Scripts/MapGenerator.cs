@@ -8,9 +8,9 @@ public class MapGenerator : MonoBehaviour
     private GameObject playerInstance;
 
     [Header("Grid")]
-    public int gridWidth = 11;       // odd helps center
+    public int gridWidth = 11;       
     public int gridHeight = 9;
-    public int startX = 5;          // spawn cell coordinates (grid)
+    public int startX = 5;         
     public int startY = 4;
 
     [Header("Room counts")]
@@ -18,18 +18,18 @@ public class MapGenerator : MonoBehaviour
     public int maxRooms = 14;
 
     [Header("Prefabs")]
-    public GameObject roomPrefabRegular; // default room prefab (Tilemap)
+    public GameObject roomPrefabRegular; 
     public GameObject roomPrefabBoss;
     public GameObject roomPrefabShop;
     public GameObject roomPrefabSecret;
 
     [Header("Spacing")]
-    public float roomSpacingX = 16f; // world units between room centers (match tilemap size)
+    public float roomSpacingX = 16f; 
     public float roomSpacingY = 9f;
 
     // Internal
-    private bool[,] occupied; // grid occupancy
-    private List<Vector2Int> cells; // list of occupied coords
+    private bool[,] occupied; 
+    private List<Vector2Int> cells; 
     private Dictionary<Vector2Int, RoomController> roomLookup = new();
     
     private void Start()
@@ -43,7 +43,6 @@ public class MapGenerator : MonoBehaviour
         cells = new List<Vector2Int>();
         roomLookup.Clear();
 
-        // BFS expansion from start until desired rooms count
         Queue<Vector2Int> q = new Queue<Vector2Int>();
         Vector2Int start = new Vector2Int(startX, startY);
         q.Enqueue(start);
@@ -56,7 +55,6 @@ public class MapGenerator : MonoBehaviour
         {
             var curr = q.Dequeue();
 
-            // shuffle neighbor directions
             var dirs = new List<Vector2Int> {
                 new Vector2Int(1,0),
                 new Vector2Int(-1,0),
@@ -71,8 +69,7 @@ public class MapGenerator : MonoBehaviour
                 if (next.x < 0 || next.x >= gridWidth || next.y < 0 || next.y >= gridHeight) continue;
                 if (occupied[next.x, next.y]) continue;
 
-                // Probability to expand, so map is not full grid
-                if (rnd.NextDouble() < 0.6) // tweak to control branching
+                if (rnd.NextDouble() < 0.6) 
                 {
                     occupied[next.x, next.y] = true;
                     cells.Add(next);
@@ -81,11 +78,9 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        // ensure min rooms: if below min, fill random neighbors until min
         var candidateNeighbours = new List<Vector2Int>();
         while (cells.Count < minRooms)
         {
-            // collect frontier neighbors
             candidateNeighbours.Clear();
             foreach (var c in cells)
             {
@@ -103,7 +98,6 @@ public class MapGenerator : MonoBehaviour
             cells.Add(pick);
         }
 
-        // Now instantiate rooms (regular by default)
         foreach (var cell in cells)
         {
             Vector2 world = GridToWorld(cell);
@@ -114,9 +108,14 @@ public class MapGenerator : MonoBehaviour
             rc.gridPosition = cell;
             rc.roomType = RoomType.Regular;
             roomLookup[cell] = rc;
+
+            var spawner = go.GetComponent<RoomEnemySpawner>();
+            if (spawner != null)
+            {
+                spawner.SpawnEnemies();
+            }
         }
 
-        // Build adjacency graph and compute distances from spawn (BFS)
         var distances = new Dictionary<Vector2Int, int>();
         var queue = new Queue<Vector2Int>();
         distances[start] = 0;
@@ -134,7 +133,6 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        // Assign graphDistance into RoomController
         foreach (var kv in roomLookup)
         {
             var rc = kv.Value;
@@ -144,17 +142,13 @@ public class MapGenerator : MonoBehaviour
                 rc.graphDistance = int.MaxValue;
         }
 
-        // Pick boss/shop/secret:
-        // boss = furthest from start (choose one of max distance rooms)
         int maxDist = distances.Values.Max();
         var furthest = distances.Where(kv => kv.Value == maxDist).Select(kv => kv.Key).ToList();
         var bossPos = furthest[rnd.Next(furthest.Count)];
         roomLookup[bossPos].roomType = RoomType.Boss;
 
-        // remove boss from candidate set
         var remaining = roomLookup.Keys.Where(k => k != bossPos).ToList();
 
-        // pick shop: random end-room (degree 1) if available, else random
         var endRooms = roomLookup.Keys.Where(k =>
         {
             int neigh = 0;
@@ -173,13 +167,10 @@ public class MapGenerator : MonoBehaviour
             shopPos = remaining[rnd.Next(remaining.Count)];
         roomLookup[shopPos].roomType = RoomType.Shop;
 
-        // pick secret: choose a room that is empty neighbor (we'll just pick a random internal room not boss/shop)
         var secretCandidates = roomLookup.Keys.Where(k => k != bossPos && k != shopPos).ToList();
         var secretPos = secretCandidates[rnd.Next(secretCandidates.Count)];
         roomLookup[secretPos].roomType = RoomType.Secret;
 
-        // Update visuals by swapping prefabs or changing contents:
-        // For simplicity we will swap to specific prefab variants for boss/shop/secret
         foreach (var kv in roomLookup.ToList())
         {
             var pos = kv.Key;
@@ -199,7 +190,6 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        // Finally set doors/walls by checking neighbors
         foreach (var kv in roomLookup)
         {
             var pos = kv.Key;
@@ -212,17 +202,11 @@ public class MapGenerator : MonoBehaviour
             rc.SetDoorState(up, down, left, right);
         }
 
-        // ----------------------
-        // Link DoorTrigger.targetRoom + spawn offsets
-        // ----------------------
         foreach (var kv in roomLookup.ToList())
         {
             Vector2Int pos = kv.Key;
             RoomController rc = kv.Value;
 
-            // For each direction, if neighbor exists, add (or configure) the DoorTrigger
-            // on the *neighbor's* complementary door (so colliding with neighbor door triggers entry to neighbor)
-            // UP neighbor -> neighbor's DOWN door
             if (roomLookup.ContainsKey(pos + Vector2Int.up))
             {
                 var neighbor = roomLookup[pos + Vector2Int.up];
@@ -237,7 +221,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
 
-            // DOWN neighbor -> neighbor's UP door
             if (roomLookup.ContainsKey(pos + Vector2Int.down))
             {
                 var neighbor = roomLookup[pos + Vector2Int.down];
@@ -252,7 +235,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
 
-            // LEFT neighbor -> neighbor's RIGHT door
             if (roomLookup.ContainsKey(pos + Vector2Int.left))
             {
                 var neighbor = roomLookup[pos + Vector2Int.left];
@@ -267,7 +249,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
 
-            // RIGHT neighbor -> neighbor's LEFT door
             if (roomLookup.ContainsKey(pos + Vector2Int.right))
             {
                 var neighbor = roomLookup[pos + Vector2Int.right];
@@ -284,25 +265,21 @@ public class MapGenerator : MonoBehaviour
         }
 
 
-        // Register rooms in RoomManager so camera and map UI can use them
         RoomManager.Instance.RegisterGeneratedRooms(roomLookup.Values.ToList());
 
-        // --- Spawn player at start room ---
         Vector2 startWorld = GridToWorld(start);
 
-        // remove existing player
         if (playerInstance != null)
         {
             Destroy(playerInstance);
         }
 
-        startWorld += new Vector2(0.2f, -0.2f); // tweak these to fine-align
+        startWorld += new Vector2(0.2f, -0.2f); 
 
-        // spawn
         playerInstance = Instantiate(playerPrefab, startWorld, Quaternion.identity);
 
-        // optional slight upward offset (depends on prefab pivot)
         playerInstance.transform.position += Vector3.up * 0.5f;
+
 
         Debug.Log($"Spawned player at world {startWorld}");
 
@@ -312,7 +289,6 @@ public class MapGenerator : MonoBehaviour
 
     Vector2 GridToWorld(Vector2Int grid)
     {
-        // center grid around origin: compute offset so center of grid is at (0,0)
         float centerOffsetX = (gridWidth - 1) / 2f;
         float centerOffsetY = (gridHeight - 1) / 2f;
 
@@ -324,7 +300,6 @@ public class MapGenerator : MonoBehaviour
     void ReplaceRoomPrefab(RoomController rc, GameObject newPrefab)
     {
         if (newPrefab == null) return;
-        // Capture grid position and destroy old
         var grid = rc.gridPosition;
         var pos = rc.transform.position;
         Destroy(rc.gameObject);
@@ -339,7 +314,6 @@ public class MapGenerator : MonoBehaviour
 
     RoomType DetermineRoomTypeFromPrefab(GameObject prefab)
     {
-        // If you need typed prefabs you can add logic here.
         if (prefab == roomPrefabBoss) return RoomType.Boss;
         if (prefab == roomPrefabShop) return RoomType.Shop;
         if (prefab == roomPrefabSecret) return RoomType.Secret;

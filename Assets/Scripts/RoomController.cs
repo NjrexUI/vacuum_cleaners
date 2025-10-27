@@ -1,23 +1,23 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 public class RoomController : MonoBehaviour
 {
-    public Vector2Int gridPosition;        // set by generator (x,y in grid)
+    public Vector2Int gridPosition;        
     public RoomType roomType = RoomType.Regular;
-    public int graphDistance = 0;          // distance from spawn (filled by generator)
+    public int graphDistance = 0;          
 
     private List<DoorTrigger> cachedDoorTriggers = new List<DoorTrigger>();
 
-    // Door placeholder transforms (assign to children or via code by name)
     public Transform doorPlaceUp;
     public Transform doorPlaceDown;
     public Transform doorPlaceLeft;
     public Transform doorPlaceRight;
 
-    // Optionally references to actual door/wall objects to toggle:
-    // If you put Door child GameObjects under placeholders, we just toggle them by name.
     const string doorName = "Door";
     const string wallName = "Wall";
+
+    private List<EnemyBasic> activeEnemies = new List<EnemyBasic>();
+    private bool doorsReplaced = false;
 
     private void Start()
     {
@@ -26,14 +26,12 @@ public class RoomController : MonoBehaviour
 
     private void Awake()
     {
-        // Try to auto-assign the placeholders if not set in inspector
         if (doorPlaceUp == null) doorPlaceUp = transform.Find("DoorPlace_Up");
         if (doorPlaceDown == null) doorPlaceDown = transform.Find("DoorPlace_Down");
         if (doorPlaceLeft == null) doorPlaceLeft = transform.Find("DoorPlace_Left");
         if (doorPlaceRight == null) doorPlaceRight = transform.Find("DoorPlace_Right");
     }
 
-    // Called from generator after creating neighbors boolean
     public void SetDoorState(bool upOpen, bool downOpen, bool leftOpen, bool rightOpen)
     {
         SetChildActive(doorPlaceUp, doorName, upOpen);
@@ -77,7 +75,6 @@ public class RoomController : MonoBehaviour
             cachedDoorTriggers.Add(dt);
     }
 
-    // Enable/disable *this room's* door triggers
     public void SetDoorTriggersActive(bool active)
     {
         for (int i = 0; i < cachedDoorTriggers.Count; i++)
@@ -87,6 +84,65 @@ public class RoomController : MonoBehaviour
                 dt.enabled = active;
         }
     }
+
+    // --- NEW ---
+    public void RegisterEnemy(EnemyBasic enemy)
+    {
+        if (enemy == null) return;
+        if (!activeEnemies.Contains(enemy))
+        {
+            activeEnemies.Add(enemy);
+            ReplaceDoorsWithWalls();
+        }
+    }
+
+    public void UnregisterEnemy(EnemyBasic enemy)
+    {
+        if (enemy == null) return;
+        activeEnemies.Remove(enemy);
+
+        if (activeEnemies.Count == 0)
+        {
+            RestoreDoors();
+        }
+    }
+
+    private void ReplaceDoorsWithWalls()
+    {
+        if (doorsReplaced) return;
+        doorsReplaced = true;
+
+        SetChildActive(doorPlaceUp, doorName, false);
+        SetChildActive(doorPlaceUp, wallName, true);
+
+        SetChildActive(doorPlaceDown, doorName, false);
+        SetChildActive(doorPlaceDown, wallName, true);
+
+        SetChildActive(doorPlaceLeft, doorName, false);
+        SetChildActive(doorPlaceLeft, wallName, true);
+
+        SetChildActive(doorPlaceRight, doorName, false);
+        SetChildActive(doorPlaceRight, wallName, true);
+    }
+
+    private void RestoreDoors()
+    {
+        if (!doorsReplaced) return;
+        doorsReplaced = false;
+
+        SetChildActive(doorPlaceUp, doorName, true);
+        SetChildActive(doorPlaceUp, wallName, false);
+
+        SetChildActive(doorPlaceDown, doorName, true);
+        SetChildActive(doorPlaceDown, wallName, false);
+
+        SetChildActive(doorPlaceLeft, doorName, true);
+        SetChildActive(doorPlaceLeft, wallName, false);
+
+        SetChildActive(doorPlaceRight, doorName, true);
+        SetChildActive(doorPlaceRight, wallName, false);
+    }
+    // ------------
 
     private void OnTriggerEnter2D(Collider2D other)
     {

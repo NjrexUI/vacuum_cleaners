@@ -457,6 +457,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7285818215335003086}
   - component: {fileID: 7207326618000737434}
+  - component: {fileID: 448565644542921055}
   m_Layer: 0
   m_Name: Room_02
   m_TagString: Untagged
@@ -503,6 +504,25 @@ MonoBehaviour:
   doorPlaceDown: {fileID: 3164125020832595129}
   doorPlaceLeft: {fileID: 5875666233156246564}
   doorPlaceRight: {fileID: 3635151859295516692}
+--- !u!114 &448565644542921055
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2972132413365018415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67a868ae1c43aed49be69f48a4e46361, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyPrefab: {fileID: 5726841588308616494, guid: c5e14b07f2d037c4f8656557eb80daa8, type: 3}
+  enemiesToSpawn: 2
+  cornerOffsets:
+  - {x: -4, y: 4}
+  - {x: 4, y: 4}
+  - {x: -4, y: -4}
+  - {x: 4, y: -4}
 --- !u!1 &4029406899433605863
 GameObject:
   m_ObjectHideFlags: 0
