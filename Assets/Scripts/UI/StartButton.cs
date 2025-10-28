@@ -5,6 +5,6 @@ public class ChangeScene : MonoBehaviour
 {
     public void StartGame() 
     {
-        SceneManager.LoadScene("World_01");
+        SceneManager.LoadScene("Cutscene");
     }
 }

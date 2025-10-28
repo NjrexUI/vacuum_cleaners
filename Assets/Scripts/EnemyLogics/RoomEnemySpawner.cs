@@ -51,7 +51,7 @@ public class RoomEnemySpawner : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            Vector2 spawnPos = (Vector2)transform.position + cornerOffsets[i];
+            Vector2 spawnPos = (Vector2)roomController.transform.position + cornerOffsets[i];
             GameObject go = Instantiate(enemyPrefab, spawnPos, Quaternion.identity, roomController.transform);
 
             var enemy = go.GetComponent<EnemyBasic>();
