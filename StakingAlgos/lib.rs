@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Token, Transfer};
 
-declare_id!("---"); // Later replace with real ID on Deploy
+declare_id!("---");
 
 #[program]
 pub mod solana_staking {
