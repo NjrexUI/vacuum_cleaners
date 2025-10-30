@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Login.unity
     guid: 2be892a07374bf84eb51d093e6d34cb0
   - enabled: 1
+    path: Assets/Scenes/Main.unity
+    guid: 110f0a0730c7f6144acdf0d3ee5c081a
+  - enabled: 0
     path: Assets/Scenes/TitleScreen.unity
     guid: 1715475e7f8850943bff2bbf0bab455a
   - enabled: 1
@@ -17,6 +20,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/World_01.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Scenes/WinScreen.unity
+    guid: 7086b65c7d9d9054098d64aa91833dd5
+  - enabled: 1
+    path: Assets/Scenes/GameOverScreen.unity
+    guid: c72cdabfb85043f4e8a4874ce025268e
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

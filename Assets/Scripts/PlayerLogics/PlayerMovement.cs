@@ -16,12 +16,6 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 moveInput;
     private Vector2 currentVelocity;
 
-    public GameObject projectilePrefab;   // Assign your Projectile prefab here
-    public Transform firePoint;           // The point where the bullet will appear
-    public float fireRate = 0.25f;        // Time between shots
-
-    private float nextFireTime = 0f;
-
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -53,12 +47,6 @@ public class PlayerMovement : MonoBehaviour
         {
             spriteRenderer.flipX = moveInput.x < 0;
         }
-
-        if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
-        {
-            Shoot();
-            nextFireTime = Time.time + fireRate;
-        }
     }
 
     void FixedUpdate()
@@ -74,11 +62,5 @@ public class PlayerMovement : MonoBehaviour
     {
         rb.linearVelocity = Vector2.zero;
         currentVelocity = Vector2.zero;
-    }
-
-    void Shoot()
-    {
-        var projectileObj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        var projectile = projectileObj.GetComponent<PaintProjectile>();
     }
 }

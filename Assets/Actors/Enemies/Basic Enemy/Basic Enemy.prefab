@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 2630331441176459903}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.47, y: -0.008, z: 0.077189445}
+  m_LocalPosition: {x: -0.532, y: -0.008, z: 0.077189445}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -46,7 +46,7 @@ GameObject:
   - component: {fileID: 1477014934276011906}
   m_Layer: 0
   m_Name: Basic Enemy
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -207,11 +207,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6aaff4e5468538a4ca74beee9286c379, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 2025620334118075516, guid: d2cba2303423ae54a9463bd76d893bb9, type: 3}
   firePoint: {fileID: 1659401936650526657}
   bulletPrefab: {fileID: 5956985659350844726, guid: 44e508da45985db4aa1d64beb9b5c7b6, type: 3}
   moveSpeed: 3
   desiredDistance: 5
-  circleRadius: 0.2
-  circleSpeed: 2
-  fireRate: 0.1
+  hoverRadius: 0.2
+  hoverSpeed: 2
+  fireRate: 1
+  health: 3

@@ -24,6 +24,8 @@ public class RoomController : MonoBehaviour
 
     private RoomEnemySpawner spawner;
 
+    [Header("Room Bounds")]
+    public Vector2 roomSize = new Vector2(16f, 16f);
 
     public PaintManager paintManager { get; private set; }
 
@@ -97,6 +99,18 @@ public class RoomController : MonoBehaviour
             if (dt != null)
                 dt.enabled = active;
         }
+    }
+
+    public Vector2 GetRandomPointInRoom()
+    {
+        Vector2 center = transform.position;
+        float halfWidth = roomSize.x / 2f;
+        float halfHeight = roomSize.y / 2f;
+
+        return new Vector2(
+            Random.Range(center.x - halfWidth * 0.8f, center.x + halfWidth * 0.8f),
+            Random.Range(center.y - halfHeight * 0.8f, center.y + halfHeight * 0.8f)
+        );
     }
 
     // ----- ENEMY MANAGEMENT -----

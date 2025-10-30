@@ -20,4 +20,14 @@ public class PaintProjectile : MonoBehaviour
     {
         transform.position += (Vector3)(direction * speed * Time.deltaTime);
     }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Enemy"))
+        {
+            other.GetComponent<EnemyBasic>()?.TakeDamage(1);
+        }
+
+        Destroy(gameObject);
+    }
 }

@@ -17,7 +17,7 @@ public class EnemyBasic : MonoBehaviour
     public float hoverSpeed = 2f;
 
     [Header("Shooting")]
-    public float fireRate = 1.5f;
+    public float fireRate = 5f;
     private float nextFireTime;
 
     [Header("Health")]

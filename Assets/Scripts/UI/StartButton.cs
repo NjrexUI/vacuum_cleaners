@@ -7,4 +7,8 @@ public class ChangeScene : MonoBehaviour
     {
         SceneManager.LoadScene("Cutscene");
     }
+    public void BackToMenu()
+    {
+        SceneManager.LoadScene("Main");
+    }
 }

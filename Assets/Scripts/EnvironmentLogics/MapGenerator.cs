@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 public class MapGenerator : MonoBehaviour
@@ -34,7 +34,16 @@ public class MapGenerator : MonoBehaviour
     private bool[,] occupied; 
     private List<Vector2Int> cells; 
     private Dictionary<Vector2Int, RoomController> roomLookup = new();
-    
+
+    [Header("References")]
+    public GameObject endPointPrefab;
+    public Transform player;
+    public RoomController[] allRooms; // assign dynamically or manually
+
+    [Header("Spawn Settings")]
+    public Vector2 roomCenterOffset = Vector2.zero; // optional offset inside room
+
+
     private void Start()
     {
         Generate();
@@ -260,8 +269,9 @@ public class MapGenerator : MonoBehaviour
                     }
                 }
             }
-        }
 
+            SpawnEndPointInFurthestRoom();
+        }
 
         RoomManager.Instance.RegisterGeneratedRooms(roomLookup.Values.ToList());
 
@@ -284,6 +294,47 @@ public class MapGenerator : MonoBehaviour
         Debug.Log($"Spawn grid: ({startX}, {startY})   Grid size: {gridWidth}x{gridHeight}");
 
     }
+
+
+
+    public void SpawnEndPointInFurthestRoom()
+    {
+        if (endPointPrefab == null)
+        {
+            Debug.LogError("[DungeonManager] ❌ EndPoint prefab not assigned!");
+            return;
+        }
+
+        if (player == null)
+        {
+            Debug.LogError("[DungeonManager] ❌ Player reference not assigned!");
+            return;
+        }
+
+        if (allRooms == null || allRooms.Length == 0)
+        {
+            Debug.LogError("[DungeonManager] ❌ No rooms registered in allRooms!");
+            return;
+        }
+
+        // Find room with greatest distance from player
+        RoomController furthestRoom = allRooms
+            .OrderByDescending(r => Vector2.Distance(player.position, r.transform.position))
+            .FirstOrDefault();
+
+        if (furthestRoom == null)
+        {
+            Debug.LogError("[DungeonManager] ⚠ No valid room found!");
+            return;
+        }
+
+        // Spawn endpoint in that room
+        Vector3 spawnPos = furthestRoom.transform.position + (Vector3)roomCenterOffset;
+        Instantiate(endPointPrefab, spawnPos, Quaternion.identity, furthestRoom.transform);
+
+        Debug.Log($"[DungeonManager] 🏁 EndPoint spawned in furthest room: {furthestRoom.name}");
+    }
+
 
     Vector2 GridToWorld(Vector2Int grid)
     {

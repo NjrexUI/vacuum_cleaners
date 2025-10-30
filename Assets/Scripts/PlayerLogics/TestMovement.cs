@@ -64,12 +64,6 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
         // Start dash
         if (Input.GetKeyDown(KeyCode.Space) && !isDashing && Time.time > nextDashTime)
             StartCoroutine(Dash());
-
-        if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
-        {
-            Shoot();
-            nextFireTime = Time.time + fireRate;
-        }
     }
 
     void FixedUpdate()
@@ -184,26 +178,5 @@ public class PlayerCarDashMovementChaotic : MonoBehaviour
             transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, targetAngle), Time.deltaTime * chaosRecoverySpeed);
             chaosAngleOffset = Mathf.Lerp(chaosAngleOffset, 0f, Time.deltaTime * chaosRecoverySpeed);
         }
-    }
-
-    void Shoot()
-    {
-        // Convert mouse to world position
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0f; // Make sure it's on same plane
-
-        // Direction from firePoint to mouse
-        Vector2 dir = (mouseWorldPos - firePoint.position).normalized;
-
-        // Calculate angle
-        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-
-        // Spawn projectile and rotate it correctly
-        GameObject proj = Instantiate(projectilePrefab, firePoint.position, Quaternion.Euler(0f, 0f, angle));
-        proj.GetComponent<PaintProjectile>().Initialize(dir);
-
-        // For debugging
-        Debug.DrawLine(firePoint.position, mouseWorldPos, Color.red, 0.5f);
-        Debug.Log($"Mouse: {mouseWorldPos}, FirePoint: {firePoint.position}, Dir: {dir}, Angle: {angle}");
     }
 }
